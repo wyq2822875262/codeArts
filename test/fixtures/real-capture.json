@@ -1,0 +1,88 @@
+{
+  "_note": "2026-11-16 从 devcloud.cn-north-4 网页端实抓的真实流量片段，用于回归校验协议解析与事件映射",
+  "config": {
+    "basePath": "/chat",
+    "cftk_cookie_key_cf2": "devclouddevuibjtcftk",
+    "modeType": "fastmode",
+    "clientType": "CodeArtsWork_Web",
+    "clientVersion": "126.11.2.20261113114147"
+  },
+  "createSession": {
+    "request": {
+      "method": "POST",
+      "path": "/chat/v1/cloudagent/sessions",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "application/json, text/plain, */*",
+        "language": "zh-cn",
+        "x-language": "zh-cn",
+        "x-requested-with": "XMLHttpRequest",
+        "x-codearts-doer-scenario-type": "web",
+        "cftk": "<cftk>",
+        "agent-type": "CodeBase"
+      },
+      "body": {}
+    },
+    "response": {
+      "status": "ok",
+      "result": {
+        "session_id": "d0284830-4fdb-488d-b59a-6fd2fb90dee3",
+        "runtime_name": "runtime-codeartsdoer-v3",
+        "status": "ACTIVE",
+        "streaming": false,
+        "client_type": "web"
+      }
+    },
+    "errorWithoutAgentType": {
+      "error_code": "TM.00001001",
+      "error_msg": "请求头Agent-Type为空"
+    },
+    "errorWithoutCftk": {
+      "error": "csrf validate fail."
+    }
+  },
+  "sendMessage": {
+    "request": {
+      "method": "POST",
+      "path": "/chat/codebaseservice/v1/cloudagent/sessions/{sid}/messages",
+      "headers": {
+        "Content-Type": "application/json",
+        "Accept": "text/event-stream",
+        "x-requested-with": "XMLHttpRequest",
+        "x-codearts-doer-scenario-type": "web",
+        "x-auth-token": "",
+        "cftk": "<cftk>",
+        "x-ot-client-type": "CodeArtsWork_Web",
+        "x-ot-client-version": "126.11.2.20261113114147",
+        "x-mode-type": "fastmode"
+      },
+      "body": { "content": "说一句你好", "model_id": "speed", "repos": [] }
+    }
+  },
+  "sse": "event: status\ndata: {\"status\":\"initializing\",\"turn_id\":\"x-1\",\"message_id\":\"2122160273996767234\",\"pool_used\":false,\"ts\":1794797411819}\n\nevent: status\ndata: {\"status\":\"processing\",\"turn_id\":\"x-1\",\"ts\":1794797415546}\n\nevent: file_diff\ndata: {\"diff\":[],\"ts\":1794797415703}\n\nevent: session_title\ndata: {\"title\":\"你好，打个招呼\",\"turn_id\":\"x-1\",\"ts\":1794797417762}\n\nevent: message\ndata: {\"content\":\"你好！\",\"index\":5,\"part_id\":\"prt_1e240e0f8001i41jt1KSiUFrtA\",\"ts\":1794797418283}\n\nevent: step_finish\ndata: {\"reason\":\"stop\",\"tokens\":{\"total\":27222,\"input\":24914,\"output\":4,\"reasoning\":0,\"cache\":{\"write\":0,\"read\":2304},\"context\":{\"tools\":0,\"mcp\":0,\"messages\":921,\"skills\":0,\"system_prompts\":26301}},\"cost\":0,\"ts\":1794797418622}\n\nevent: done\ndata: {\"latency_ms\":6825,\"turn_id\":\"x-1\",\"model\":\"speed\",\"tokens\":{\"input\":24914,\"output\":4,\"reasoning\":0,\"cache\":{\"read\":2304,\"write\":0},\"total\":27222,\"cost\":0.0},\"credit_cost_for_web\":{\"id\":\"msg_1e240d537001i41YLI10iDiIJt\",\"credit_cost\":1.07,\"prompt_token_used\":30651,\"completion_token_used\":10,\"cached_token_used\":5376,\"total_token_used\":30661},\"artifact_summary\":{\"artifacts\":[],\"total\":0},\"ts\":1794797418842}\n\n",
+  "sseWithThought": "event: thought\ndata: {\"content\":\"用户\",\"index\":6,\"part_id\":\"prt_1e2412449001rdTMWOYdIAziZt\",\"ts\":1794797298257}\n\nevent: message\ndata: {\"content\":\"你好！\",\"index\":51,\"part_id\":\"prt_1e2412655001iWj4zmJBC1J5fr\",\"ts\":1794797298772}\n\n",
+  "models": [
+    { "id": "speed", "name": "智速模式", "multiple": 0.18 },
+    { "id": "deepseek-v4.1-flash-1017", "name": "DeepSeek-V4.1-Flash-1017", "multiple": 0.18 },
+    { "id": "glm-5.3-flash", "name": "GLM-5.3-Flash", "multiple": 0.08 },
+    { "id": "deepseek-v4.1-flash", "name": "DeepSeek-V4.1-Flash", "multiple": 0.18 },
+    { "id": "glm-5.3", "name": "GLM-5.3", "multiple": 0.79 },
+    { "id": "kimi-k3.1-pro", "name": "Kimi-K3.1-Pro", "multiple": 1.63 },
+    { "id": "kimi-k3", "name": "Kimi-K3", "multiple": 2.38 },
+    { "id": "glm-5.2", "name": "GLM-5.2", "multiple": 0.7 },
+    { "id": "glm-5.2-arkts-spark", "name": "GLM-5.2-ArkTS-SPARK", "multiple": 0.7 },
+    { "id": "openpangu-2.1-pro", "name": "OpenPangu-2.1-Pro", "multiple": 0.07 },
+    { "id": "openpangu-2.0-pro", "name": "OpenPangu-2.0-Pro", "multiple": 0.7 },
+    { "id": "openpangu-2.0-flash", "name": "OpenPangu-2.0-Flash", "multiple": 0.32 }
+  ],
+  "cftkRotation": {
+    "_note": "每次响应都可能下发新的 devclouddevuibjtcftk，必须回写，否则下次 csrf 校验失败",
+    "sample": "Set-Cookie: devclouddevuibjtcftk=HBWR-V23G-WLCS-LB69-SEI9-C80K-SYLF-5TCS; Domain=devcloud.cn-north-4.huaweicloud.com; Path=/; Secure"
+  },
+  "authGate": {
+    "_note": "实测：只有真实浏览器环境能通过 /v1/cloudagent/*，同 cookie 用 curl/Node 直连会返回 HW-AJAX-REDIRECT；/rest/me 不受此限",
+    "browserOk": true,
+    "nodeSameCookieOk": false,
+    "restMeViaNodeOk": true
+  }
+}

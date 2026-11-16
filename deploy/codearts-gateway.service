@@ -1,0 +1,39 @@
+[Unit]
+Description=码道 CodeArts 反代网关
+Documentation=https://github.com/ithtelab/workbuddy-manager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 改成实际部署路径与运行用户
+User=codearts
+Group=codearts
+WorkingDirectory=/opt/codearts-gateway
+Environment=NODE_ENV=production
+EnvironmentFile=/opt/codearts-gateway/.env
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=3
+# 优雅停机：给在途的流式响应留时间
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+# 加固
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/codearts-gateway/data
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=codearts-gateway
+
+[Install]
+WantedBy=multi-user.target

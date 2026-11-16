@@ -1,0 +1,20 @@
+# 码道网关 Caddy 配置示例（自带 HTTPS，比 Nginx 省事）
+#
+# 放到 /etc/caddy/Caddyfile，改掉域名即可，证书自动申请续期。
+# 关键点：flush_interval -1 才会逐块推送，否则流式会攒成一次性输出。
+
+gw.example.com {
+	encode zstd gzip
+
+	reverse_proxy 127.0.0.1:7864 {
+		header_up X-Real-IP {remote_host}
+		# 流式（SSE）必须关掉缓冲
+		flush_interval -1
+	}
+
+	header {
+		X-Frame-Options SAMEORIGIN
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+	}
+}

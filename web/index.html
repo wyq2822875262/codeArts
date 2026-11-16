@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="dark light" />
+<title>码道网关 · 控制台</title>
+<script>
+// 在样式表加载前定主题，避免首屏闪一下
+(function () {
+  try {
+    var t = localStorage.getItem('deva-theme');
+    if (t !== 'light' && t !== 'dark') {
+      t = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    document.documentElement.dataset.theme = t;
+  } catch (e) { /* localStorage 不可用时用默认深色 */ }
+})();
+</script>
+<link rel="stylesheet" href="/style.css?v={{STYLE_V}}" />
+</head>
+<body>
+
+<!-- 登录 -->
+<div id="login-view" class="login-wrap hidden">
+  <div class="login-card">
+    <div class="login-logo"><span class="dot"></span> 码道网关</div>
+    <p class="login-sub">CodeArts 反代 · 账号池控制台</p>
+    <input id="login-pass" type="password" class="input" placeholder="管理员密码" autocomplete="current-password" />
+    <button id="login-btn" class="btn primary block">登录</button>
+    <div id="login-err" class="login-err"></div>
+    <div style="text-align:center;margin-top:6px">
+      <button class="theme-btn" id="theme-toggle-login" title="切换深浅主题" aria-label="切换深浅主题" type="button">◐</button>
+    </div>
+  </div>
+</div>
+
+<!-- 主界面 -->
+<div id="app-view" class="layout hidden">
+  <aside class="sidebar">
+    <div class="brand"><span class="dot"></span> <span>码道网关</span></div>
+    <nav class="nav">
+      <a class="nav-item active" data-page="dashboard"><i>▤</i> <span>仪表盘</span></a>
+      <a class="nav-item" data-page="accounts"><i>◍</i> <span>账号管理</span></a>
+      <a class="nav-item" data-page="signin"><i>✦</i> <span>每日签到</span></a>
+      <a class="nav-item" data-page="keys"><i>⚿</i> <span>密钥分发</span></a>
+      <a class="nav-item" data-page="logs"><i>≡</i> <span>调用日志</span></a>
+      <a class="nav-item" data-page="usage"><i>◪</i> <span>用量统计</span></a>
+      <a class="nav-item" data-page="models"><i>◈</i> <span>模型中心</span></a>
+      <a class="nav-item" data-page="security"><i>⛨</i> <span>IP 管控</span></a>
+      <a class="nav-item" data-page="settings"><i>⚙</i> <span>设置</span></a>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="health" id="side-health"><span class="pulse"></span> <span>服务运行中</span></div>
+      <a class="logout" id="logout-btn">退出登录</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <h1 id="page-title">仪表盘</h1>
+      <div class="top-actions">
+        <span class="upstream-tag" id="upstream-tag">上游 · 未连接</span>
+        <button class="theme-btn" id="theme-toggle" title="切换深浅主题" aria-label="切换深浅主题">◐</button>
+      </div>
+    </header>
+
+    <!-- 仪表盘 -->
+    <section class="page" id="page-dashboard">
+      <div class="cards">
+        <div class="card stat"><div class="stat-label">今日请求</div><div class="stat-value" id="s-req">0</div><div class="stat-foot" id="s-req-foot">全部 0</div></div>
+        <div class="card stat"><div class="stat-label">今日 Token</div><div class="stat-value" id="s-tok">0</div><div class="stat-foot" id="s-tok-foot">全部 0</div></div>
+        <div class="card stat"><div class="stat-label">账号健康</div><div class="stat-value" id="s-acc">0/0</div><div class="stat-foot" id="s-acc-foot">异常 0</div></div>
+        <div class="card stat"><div class="stat-label">密钥数</div><div class="stat-value" id="s-key">0</div><div class="stat-foot" id="s-key-foot">启用 0</div></div>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><h3>近 14 天请求量</h3><span class="muted" id="chart-day-note"></span></div>
+          <canvas id="chart-daily" height="180"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>模型用量占比</h3></div>
+          <div id="model-share" class="share-list"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>最近调用</h3><a class="link" data-page="logs">查看全部 →</a></div>
+        <div class="table-wrap"><table id="recent-table"><thead><tr>
+          <th>时间</th><th>密钥</th><th>账号</th><th>模型</th><th>状态</th><th>首字</th><th>Token</th><th>IP</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- 账号 -->
+    <section class="page hidden" id="page-accounts">
+      <div class="toolbar">
+        <button class="btn primary" id="add-account">+ 添加账号</button>
+        <button class="btn" id="sync-all">同步全部</button>
+        <button class="btn" id="cookie-guide-toggle">? 如何获取 Cookie</button>
+        <input class="input search" id="acc-search" placeholder="搜索账号名…" />
+      </div>
+
+      <!-- Cookie 获取教程（默认收起，展开状态记在 localStorage） -->
+      <div class="card guide hidden" id="cookie-guide">
+        <div class="card-head">
+          <h3>如何获取上游 Cookie</h3>
+          <span class="link" id="cookie-guide-close">收起</span>
+        </div>
+
+        <div class="guide-intro">
+          网关用网页端的登录态代替你调上游，所以要一段<b>完整</b>的 Cookie。整段粘进来即可，网关自己会从
+          <code>devclouddevuibjtcftk</code> 里取出 <code>cftk</code> 请求头，并在上游轮转后自动回写，不用手工维护。
+        </div>
+
+        <div class="guide-tabs" id="guide-tabs">
+          <button class="guide-tab active" data-browser="chrome">Chrome / Edge</button>
+          <button class="guide-tab" data-browser="firefox">Firefox</button>
+          <button class="guide-tab" data-browser="safari">Safari</button>
+          <button class="guide-tab" data-browser="console">控制台一行取</button>
+        </div>
+
+        <div class="guide-pane" data-pane="chrome">
+          <ol class="guide-steps">
+            <li>
+              <b>登录网页端</b>
+              <p>浏览器打开 <code>https://devcloud.cn-north-4.huaweicloud.com/chat/home</code>，确认已经进入对话界面、右上角能看到自己的账号。没登录拿到的 Cookie 里不会有 <code>SessionID</code>。</p>
+            </li>
+            <li>
+              <b>打开开发者工具</b>
+              <p>按 <kbd>F12</kbd>（Mac 是 <kbd>⌥⌘I</kbd>），切到 <b>Network</b> 面板，筛选器选 <b>Fetch/XHR</b>。</p>
+            </li>
+            <li>
+              <b>刷新页面，抓一个 /chat 请求</b>
+              <p>按 <kbd>⌘R</kbd> / <kbd>Ctrl+R</kbd> 刷新，在请求列表里点任意一条路径以 <code>/chat/</code> 开头的请求（如 <code>delivery?channel=WEB</code>、<code>sessions</code>）。</p>
+            </li>
+            <li>
+              <b>整段复制 Cookie</b>
+              <p>右侧切到 <b>Headers</b> → 滚到 <b>Request Headers</b> → 找到 <code>Cookie:</code> 这一行。右键该行选 <b>Copy value</b>，或者双击全选后 <kbd>⌘C</kbd>。<b>要一整行</b>，不要只复制其中几段。</p>
+              <p class="muted">如果 Headers 里没显示 Cookie，点右侧的 <b>Raw</b> 开关再看；也可以在 Network 列表里右键该请求 → Copy → Copy as cURL，Cookie 在 <code>-H 'Cookie: …'</code> 里。</p>
+            </li>
+          </ol>
+        </div>
+
+        <div class="guide-pane hidden" data-pane="firefox">
+          <ol class="guide-steps">
+            <li>
+              <b>登录网页端</b>
+              <p>打开 <code>https://devcloud.cn-north-4.huaweicloud.com/chat/home</code>，确认已登录。</p>
+            </li>
+            <li>
+              <b>打开 Network 面板</b>
+              <p><kbd>F12</kbd> → <b>网络</b>，左上筛选选 <b>XHR</b>，然后刷新页面。</p>
+            </li>
+            <li>
+              <b>取请求头里的 Cookie</b>
+              <p>点任意 <code>/chat/</code> 请求 → 右侧 <b>消息头</b> → <b>请求头</b> → 找 <code>Cookie</code> → 右键 <b>复制值</b>。</p>
+              <p class="muted">Firefox 有时把 Cookie 折叠在「已发送的 Cookie」里，展开后逐条拼成 <code>k=v; k=v</code> 也可以，但一定要带上 <code>devclouddevuibjtcftk</code>。</p>
+            </li>
+          </ol>
+        </div>
+
+        <div class="guide-pane hidden" data-pane="safari">
+          <ol class="guide-steps">
+            <li>
+              <b>先启用开发菜单</b>
+              <p>Safari → 设置 → 高级 → 勾选「在菜单栏中显示“开发”菜单」。之后按 <kbd>⌥⌘I</kbd> 打开 Web 检查器。</p>
+            </li>
+            <li>
+              <b>登录并刷新</b>
+              <p>打开 <code>https://devcloud.cn-north-4.huaweicloud.com/chat/home</code> 登录，切到 <b>网络</b> 标签，刷新页面。</p>
+            </li>
+            <li>
+              <b>复制 Cookie</b>
+              <p>点任意 <code>/chat/</code> 请求 → <b>标头</b> → <b>请求</b> → 找到 <code>Cookie</code> 整行复制。</p>
+              <p class="muted">Safari 不方便复制时，用下面的「控制台一行取」或换用 Chrome 操作。</p>
+            </li>
+          </ol>
+        </div>
+
+        <div class="guide-pane hidden" data-pane="console">
+          <p class="guide-note">在网页端按 <kbd>F12</kbd> → <b>Console</b>，粘贴执行，结果可直接粘到「添加账号」里：</p>
+          <pre class="code">copy(document.cookie)</pre>
+          <p class="guide-note warn">
+            注意：<code>SessionID</code>、<code>cbc-sid</code>、<code>HWWAFSESID</code> 这些是 <b>HttpOnly</b> Cookie，<code>document.cookie</code> 读不到。
+            如果粘进去校验报「登录态无效」，说明缺了 HttpOnly 那几项，改用上面的 Network 复制法。
+          </p>
+          <p class="guide-note">想核对一段 Cookie 里到底有哪些键，可以在 Console 跑：</p>
+          <pre class="code">[ 'SessionID', 'cbc-sid', 'devclouddevuibjtcftk', 'HWWAFSESID' ]
+  .forEach(k =&gt; console.log(k, document.cookie.includes(k + '=') ? '有' : '缺（需用 Network 复制）'))</pre>
+        </div>
+
+        <h4 class="guide-h4">必须包含的键</h4>
+        <div class="table-wrap">
+          <table class="guide-table">
+            <thead><tr><th>Cookie 名</th><th>作用</th><th>缺失后果</th></tr></thead>
+            <tbody>
+              <tr><td><code>SessionID</code></td><td>主登录态</td><td>校验直接 401</td></tr>
+              <tr><td><code>cbc-sid</code></td><td>会话绑定，网关用它识别账号</td><td>鉴权失败或被判为未登录</td></tr>
+              <tr><td><code>devclouddevuibjtcftk</code></td><td>上游要求的 <code>cftk</code> 请求头来源</td><td>缺了会 403；网关会自动提取并轮转回写</td></tr>
+              <tr><td><code>HWWAFSESID</code></td><td>华为云 WAF 会话票据</td><td>请求被 WAF 拦，返回验证页</td></tr>
+              <tr><td><code>vk</code></td><td>附属校验位</td><td>偶发鉴权失败</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h4 class="guide-h4">常见问题</h4>
+        <div class="guide-faq">
+          <div><b>校验报「登录态无效」/ 401 / 403</b><p>多半是 Cookie 过期，或者只复制了半行。重新登录网页端，按上面的步骤整段复制一次。同名账号再添加一次会覆盖更新，不用先删。</p></div>
+          <div><b>粘进去提示含非法字符</b><p>复制时带上了全角标点、换行或零宽字符。网关会自动清掉不可打印字符，但如果把换行带进了值里，还是手工删一下。</p></div>
+          <div><b>昨天还能用，今天全挂</b><p>上游登录态有有效期，也可能因为换网络 / 换 IP 触发风控。重新取一次 Cookie 即可；账号页点「校验」可以单独确认某个账号是否还活着。</p></div>
+          <div><b>要不要自己填 cftk</b><p>不用。留空时网关从 Cookie 里提取；填了也只会用于第一次请求，之后一律以上游轮转回来的值为准。</p></div>
+          <div><b>能只填 SessionID 一项吗</b><p>不行，至少要有 <code>SessionID</code> + <code>cbc-sid</code> + <code>devclouddevuibjtcftk</code>，否则对话和签到两条链路都会鉴权失败。</p></div>
+        </div>
+
+        <div class="guide-foot">
+          <span class="muted">粘贴格式：<code>k=v; k=v; k=v</code>，分号加空格分隔，不要带 <code>Cookie:</code> 前缀。</span>
+          <button class="btn primary sm" id="cookie-guide-add">我已拿到 Cookie，去添加</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap"><table id="acc-table"><thead><tr>
+          <th>名称</th><th>分组</th><th>状态</th><th>保活</th><th>可用模型</th><th>成功/失败</th><th>最近校验</th><th>操作</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- 每日签到 -->
+    <section class="page hidden" id="page-signin">
+      <div class="toolbar">
+        <button class="btn primary" id="signin-run">立即签到</button>
+        <span class="muted" id="signin-next">-</span>
+      </div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-head"><h3>今日状态</h3></div>
+          <div class="table-wrap"><table id="signin-table"><thead><tr>
+            <th>账号</th><th>今日</th><th>本次获得</th><th>说明</th>
+          </tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>签到设置</h3></div>
+          <div class="form-grid">
+            <label>自动签到
+              <select class="input" id="signin-enabled">
+                <option value="1">开启</option>
+                <option value="0">关闭</option>
+              </select>
+            </label>
+            <label>执行时刻（北京时间，时）<input class="input" id="signin-hour" type="number" min="0" max="23" /></label>
+            <label>执行时刻（分）<input class="input" id="signin-minute" type="number" min="0" max="59" /></label>
+          </div>
+          <div class="toolbar">
+            <button class="btn primary" id="signin-save">保存设置</button>
+            <button class="btn" id="signin-refresh">刷新</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>签到历史</h3></div>
+        <div class="table-wrap"><table id="signin-log-table"><thead><tr>
+          <th>时间</th><th>账号</th><th>结果</th><th>获得积分</th><th>明细</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- 密钥 -->
+    <section class="page hidden" id="page-keys">
+      <div class="toolbar">
+        <button class="btn primary" id="add-key">+ 新建密钥</button>
+        <span class="muted">下游用 <code>Authorization: Bearer &lt;密钥&gt;</code> 调用 <code>/v1</code></span>
+      </div>
+      <div class="card">
+        <div class="table-wrap"><table id="key-table"><thead><tr>
+          <th>名称</th><th>密钥</th><th>额度</th><th>已用 Token</th><th>请求数</th><th>IP 上限</th><th>模型白名单</th><th>状态</th><th>操作</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- 日志 -->
+    <section class="page hidden" id="page-logs">
+      <div class="toolbar">
+        <input class="input search" id="log-q" placeholder="搜索模型 / IP / 账号 / 错误…" />
+        <select class="input" id="log-status"><option value="">全部状态</option><option value="ok">成功</option><option value="error">失败</option></select>
+        <button class="btn" id="log-refresh">刷新</button>
+      </div>
+      <div class="card">
+        <div class="table-wrap"><table id="log-table"><thead><tr>
+          <th>时间</th><th>密钥</th><th>账号</th><th>模型</th><th>端点</th><th>状态</th><th>延时</th><th>首字</th><th>Token</th><th>IP</th>
+        </tr></thead><tbody></tbody></table></div>
+        <div class="pager"><button class="btn sm" id="log-prev">上一页</button><span id="log-page">1</span><button class="btn sm" id="log-next">下一页</button></div>
+      </div>
+    </section>
+
+    <!-- 用量 -->
+    <section class="page hidden" id="page-usage">
+      <div class="grid2">
+        <div class="card"><div class="card-head"><h3>近 24 小时请求</h3></div><canvas id="chart-hourly" height="180"></canvas></div>
+        <div class="card"><div class="card-head"><h3>各模型 Token</h3></div><div id="usage-models" class="share-list"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>每日明细</h3></div>
+        <div class="table-wrap"><table id="usage-table"><thead><tr>
+          <th>日期</th><th>请求</th><th>失败</th><th>输入 Token</th><th>输出 Token</th><th>合计</th>
+        </tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- 模型中心 -->
+    <section class="page hidden" id="page-models">
+      <div class="toolbar"><button class="btn primary" id="refresh-models">从上游同步模型</button><span class="muted" id="model-ts"></span></div>
+      <div class="card"><div class="table-wrap"><table id="model-table"><thead><tr>
+        <th>模型 ID</th><th>名称</th><th>上下文</th><th>最大输出</th><th>类型</th>
+      </tr></thead><tbody></tbody></table></div></div>
+    </section>
+
+    <!-- IP 管控 -->
+    <section class="page hidden" id="page-security">
+      <div class="card">
+        <div class="card-head"><h3>入站 IP 规则</h3><span class="muted">allow 存在时仅允许白名单；deny 始终优先</span></div>
+        <div class="toolbar">
+          <select class="input" id="rule-kind"><option value="allow">允许（allow）</option><option value="deny">拒绝（deny）</option></select>
+          <input class="input search" id="rule-cidr" placeholder="IP 或 CIDR，如 1.2.3.4 / 10.0.0.0/8" />
+          <input class="input" id="rule-note" placeholder="备注" />
+          <button class="btn primary" id="add-rule">+ 添加规则</button>
+        </div>
+        <div class="table-wrap"><table id="rule-table"><thead><tr><th>类型</th><th>CIDR</th><th>备注</th><th>创建时间</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </section>
+
+    <!-- 设置 -->
+    <section class="page hidden" id="page-settings">
+      <div class="card">
+        <div class="card-head"><h3>网关设置</h3></div>
+        <div class="form-grid">
+          <label>默认模型<input class="input" id="set-default-model" placeholder="DeepSeek-V3.2" /></label>
+          <label>会话复用（多轮共用上游 session）<select class="input" id="set-session-reuse"><option value="true">开启</option><option value="false">关闭</option></select></label>
+          <label>会话 TTL（秒）<input class="input" id="set-session-ttl" type="number" /></label>
+          <label>上游超时（毫秒）<input class="input" id="set-timeout" type="number" /></label>
+        </div>
+        <div class="form-row">
+          <label>模型别名映射（JSON，如 {"gpt-4o":"DeepSeek-V3.2"}）</label>
+          <textarea class="input mono" id="set-alias" rows="5" placeholder='{"gpt-4o":"DeepSeek-V3.2"}'></textarea>
+        </div>
+        <div class="toolbar">
+          <button class="btn primary" id="save-settings">保存设置</button>
+          <button class="btn" id="clear-sessions">清空会话池</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>账号保活</h3></div>
+        <p class="muted">上游登录态按“空闲超时”作废（实测约 1~1.5 小时不请求就失效）。这里的定时心跳会把计时器一次次推后，避免账号在你不知道的时候悄悄过期。</p>
+        <div class="form-grid">
+          <label>自动保活
+            <select class="input" id="ka-enabled">
+              <option value="true">开启</option>
+              <option value="false">关闭</option>
+            </select>
+          </label>
+          <label>心跳间隔（秒）<input class="input" id="ka-interval" type="number" min="60" step="60" /></label>
+          <label>签到前先保活
+            <select class="input" id="ka-preheat">
+              <option value="true">开启</option>
+              <option value="false">关闭</option>
+            </select>
+          </label>
+        </div>
+        <div class="toolbar">
+          <button class="btn primary" id="ka-save">保存设置</button>
+          <button class="btn" id="ka-run">立即保活一次</button>
+          <span class="muted" id="ka-summary"></span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>修改密码</h3></div>
+        <div class="form-grid">
+          <label>原密码<input class="input" id="pw-old" type="password" /></label>
+          <label>新密码<input class="input" id="pw-new" type="password" /></label>
+        </div>
+        <button class="btn" id="save-pw">更新密码</button>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>接入方式</h3></div>
+        <pre class="code" id="access-hint"></pre>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- 模态框 -->
+<div id="modal" class="modal-mask hidden">
+  <div class="modal">
+    <div class="modal-head"><h3 id="modal-title">标题</h3><button class="x" id="modal-close">×</button></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-foot"><button class="btn" id="modal-cancel">取消</button><button class="btn primary" id="modal-ok">确定</button></div>
+  </div>
+</div>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="/app.js?v={{APP_V}}"></script>
+</body>
+</html>
